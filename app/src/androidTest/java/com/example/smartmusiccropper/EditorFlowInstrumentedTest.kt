@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
@@ -107,12 +108,16 @@ class EditorFlowInstrumentedTest {
             val y = (dm.heightPixels * 0.45f).toInt()
             val fromX = (dm.widthPixels * 0.80f).toInt()
             val toX = (dm.widthPixels * 0.46f).toInt()
-            instrumentation.uiAutomation.executeShellCommand("input swipe $fromX $y $toX $y 800").close()
+            // Read the command's output to block until the swipe has been fully injected.
+            ParcelFileDescriptor.AutoCloseInputStream(
+                instrumentation.uiAutomation.executeShellCommand("input swipe $fromX $y $toX $y 800"),
+            ).use { it.readBytes() }
             val deadline = SystemClock.uptimeMillis() + 60_000
-            while ((vm.state.value as CropUiState.Ready).cropMs == adjusted && SystemClock.uptimeMillis() < deadline) {
+            fun draggedMs() = (vm.state.value as CropUiState.Ready).cropMs
+            while (draggedMs() !in 12_000L..20_000L && SystemClock.uptimeMillis() < deadline) {
                 SystemClock.sleep(250)
             }
-            val dragged = (vm.state.value as CropUiState.Ready).cropMs
+            val dragged = draggedMs()
             assertTrue("drag didn't move the crop line to the middle: $dragged", dragged in 12_000L..20_000L)
             screenshot("02b_editor_dragged")
             instrumentation.runOnMainSync { vm.onCropChanged(adjusted) }
