@@ -53,6 +53,7 @@ class EditorFlowInstrumentedTest {
 
     private fun screenshot(name: String) {
         instrumentation.waitForIdleSync()
+        SystemClock.sleep(3_000) // let Compose draw the new state on a slow emulator
         val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: return
         val dir = appContext.getExternalFilesDir(null) ?: return
         File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -99,6 +100,22 @@ class EditorFlowInstrumentedTest {
             val adjusted = (vm.state.value as CropUiState.Ready).cropMs
             assertEquals(ready.cropMs - 900, adjusted)
             screenshot("02_editor_adjusted")
+
+            // Real touch: swipe across the waveform (phone portrait layout: the waveform sits at
+            // ~45% of the screen height and spans ~8%..92% of the width) and check the line follows.
+            val dm = appContext.resources.displayMetrics
+            val y = (dm.heightPixels * 0.45f).toInt()
+            val fromX = (dm.widthPixels * 0.80f).toInt()
+            val toX = (dm.widthPixels * 0.46f).toInt()
+            instrumentation.uiAutomation.executeShellCommand("input swipe $fromX $y $toX $y 800").close()
+            val deadline = SystemClock.uptimeMillis() + 60_000
+            while ((vm.state.value as CropUiState.Ready).cropMs == adjusted && SystemClock.uptimeMillis() < deadline) {
+                SystemClock.sleep(250)
+            }
+            val dragged = (vm.state.value as CropUiState.Ready).cropMs
+            assertTrue("drag didn't move the crop line to the middle: $dragged", dragged in 12_000L..20_000L)
+            screenshot("02b_editor_dragged")
+            instrumentation.runOnMainSync { vm.onCropChanged(adjusted) }
 
             val newFile = File(dir, "song_cropped.m4a")
             instrumentation.runOnMainSync { vm.onSaveLocationPicked(Uri.fromFile(newFile)) }
