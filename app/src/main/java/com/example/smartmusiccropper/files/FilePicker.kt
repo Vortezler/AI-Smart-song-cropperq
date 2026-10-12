@@ -22,11 +22,8 @@ object FilePicker {
     fun takePersistablePermission(context: Context, uri: Uri) {
         val resolver = context.contentResolver
         val rw = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        try {
-            resolver.takePersistableUriPermission(uri, rw)
-        } catch (e: SecurityException) {
-            runCatching { resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-        }
+        runCatching { resolver.takePersistableUriPermission(uri, rw) }
+            .recoverCatching { resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
     }
 
     fun displayName(context: Context, uri: Uri): String? = runCatching {
