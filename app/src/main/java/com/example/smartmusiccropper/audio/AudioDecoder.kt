@@ -126,10 +126,13 @@ object AudioDecoder {
         }
 
         if (size == 0) throw IOException("No audio could be decoded from this file.")
+        val excess = (size - keepSamples).coerceAtLeast(0)
+        droppedSamples += excess
+        size -= excess
         val startMs = max(0L, firstPtsUs) / 1000 + droppedSamples * 1000 / PcmResampler.MODEL_SAMPLE_RATE
         val durationMs = startMs + size * 1000L / PcmResampler.MODEL_SAMPLE_RATE
         if (durationMs * 1000 > MAX_DURATION_US) throw TrackTooLongException()
-        return TailPcm(buffer.copyOf(size), startMs, durationMs)
+        return TailPcm(buffer.copyOfRange(excess, excess + size), startMs, durationMs)
     }
 
     /**
