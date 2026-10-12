@@ -63,7 +63,8 @@ class PipelineInstrumentedTest {
         assertEquals(35_000.0, frames * 1000.0 / rate, 100.0)
 
         val tail = AudioDecoder.decodeTail(appContext, uri, info, 60_000_000L)
-        assertEquals(0L, tail.startMs)
+        // MP3 decoders report the first output after the encoder delay (~14 ms), not at 0.
+        assertEquals(0.0, tail.startMs.toDouble(), 50.0)
         assertEquals(35_000.0, tail.trackDurationMs.toDouble(), 100.0)
 
         val suggestion = YamnetClassifier(appContext).use { model ->
