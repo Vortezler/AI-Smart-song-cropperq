@@ -1,0 +1,32 @@
+name: Release
+
+# Pushing a tag like v1.0.0 builds the APK and publishes it as a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests and release build
+        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          apk="SmartMusicCropper-${TAG}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          notes="docs/releases/${TAG}.md"
+          if [ -f "$notes" ]; then notes_arg=(--notes-file "$notes"); else notes_arg=(--generate-notes); fi
+          gh release create "$TAG" "$apk" --title "Smart Music Cropper ${TAG}" "${notes_arg[@]}"
