@@ -64,8 +64,10 @@ Requirements: JDK 17+, Android SDK with platform 36.
 ./gradlew assembleRelease        # release APK, signed with the debug key (see below)
 ```
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`, which runs the unit tests, builds the
-release APK and publishes a GitHub release with it attached (notes from `docs/releases/<tag>.md`).
+`.github/workflows/release.yml` publishes a GitHub release with the APK attached (notes from
+`docs/releases/<tag>.md`). It runs when a `v*` tag is pushed, when release notes land on `main`
+(tagging `v<versionName>` itself), or by hand from the Actions tab, and skips tags that already
+have a release.
 
 ## Project layout
 
