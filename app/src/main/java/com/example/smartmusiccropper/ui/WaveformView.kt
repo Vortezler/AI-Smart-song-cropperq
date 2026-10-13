@@ -3,7 +3,6 @@ package com.example.smartmusiccropper.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -77,9 +76,13 @@ fun WaveformView(
                     val down = awaitFirstDown()
                     down.consume()
                     currentOnCropChange(toMs(down.position.x))
-                    drag(down.id) { change ->
+                    // Follow every move, and also the position where the finger lifts, so the line
+                    // ends exactly where the user let go even if intermediate moves were coalesced.
+                    while (true) {
+                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
                         change.consume()
                         currentOnCropChange(toMs(change.position.x))
+                        if (!change.pressed) break
                     }
                 }
             },
