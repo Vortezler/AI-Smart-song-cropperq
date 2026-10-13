@@ -5,6 +5,12 @@ silence / dead air. Pick an MP3 or WAV, an on-device ML model (YAMNet via Tensor
 to the ending and suggests a cut point, you confirm or drag it on a waveform, and the app exports a
 cropped `.m4a`. No network access, no accounts, no analytics.
 
+<p>
+  <img src="docs/screenshots/home.png" width="240" alt="Home screen">
+  <img src="docs/screenshots/editor.png" width="240" alt="Waveform with suggested (dashed) and adjusted cut">
+  <img src="docs/screenshots/saved.png" width="240" alt="Export done">
+</p>
+
 ## Download
 
 Grab the APK from the [latest release](../../releases/latest) and open it on an Android 8.0+
@@ -54,6 +60,7 @@ Requirements: JDK 17+, Android SDK with platform 36.
 ```bash
 ./gradlew assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew testDebugUnitTest      # JVM unit tests (resampler, detector, label map)
+./gradlew connectedDebugAndroidTest   # on-device tests (needs a device or emulator)
 ./gradlew assembleRelease        # release APK, signed with the debug key (see below)
 ```
 
@@ -88,6 +95,15 @@ app/src/main/assets/
   preserved, 12 kHz tone not aliased into the 16 kHz output, stereo channels kept apart; label map
   parsing (521 classes, quoted names); music/silence decision; crop suggestion (buffer, clamping,
   earlier pauses, no-music fallback); window placement.
+- **On-device tests (Android 11 emulator, all passing):**
+  - `PipelineInstrumentedTest`: real MediaCodec decode of an MP3 and a WAV (30 s of music + 5 s of
+    silence). Durations match the container within 100 ms. YAMNet runs on-device and suggests a cut
+    at 30.5 s, and the exported `.m4a` is AAC at that length. A corrupt file is rejected without
+    crashing.
+  - `EditorFlowInstrumentedTest`: drives the real activity and ViewModel. Pick → suggested cut →
+    nudge → a real touch swipe on the waveform moves the line → "save as new file" writes an `.m4a`
+    of the adjusted length → "overwrite original" replaces the source with the cropped `.m4a`.
+    The screenshots above come from this run.
 - **Model accuracy:** the exact detection pipeline (same model file, label grouping, windowing,
   thresholds, filter and resampler) was run on synthetic songs with 1 s, 5 s and 15 s of appended
   digital silence, plus 8 s of hiss and 10 s of room tone, as both WAV and 192 kbps MP3. Every
@@ -96,9 +112,8 @@ app/src/main/assets/
 - **Build:** debug and release APKs build cleanly, lint reports no code issues, and the arm64
   native library is 16 KB page aligned.
 
-Still to check on a real device (needs hardware the build machine didn't have): MediaCodec
-decode/encode across real MP3/WAV files, the drag gesture, both save modes on different storage
-providers, and airplane-mode end-to-end use. See section 6 of the build plan for the checklist.
+Not yet covered: real music recordings (tests use synthetic music), the system file picker UI on a
+physical phone, other storage providers (Drive, SD cards), and airplane-mode use on hardware.
 
 ## Decisions and deviations from the build plan
 
